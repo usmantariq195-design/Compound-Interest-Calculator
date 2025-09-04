@@ -1,0 +1,5 @@
+{
+  "description": "Una calculadora interactiva para calcular el valor futuro de las inversiones utilizando interés compuesto, con un gráfico dinámico y un desglose detallado año por año.",
+  "requestFramePermissions": [],
+  "name": "Calculadora de Interés Compuesto"
+}

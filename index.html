@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Una calculadora de interés compuesto avanzada y fácil de usar que visualiza el crecimiento de tu inversión a lo largo del tiempo. Calcula el valor futuro, los intereses totales ganados y consulta un desglose año por año con un gráfico dinámico.">
+  <meta name="keywords" content="calculadora de interés compuesto, calculadora de inversiones, calculadora de valor futuro, calculadora de ahorros, calculadora de intereses, calculadora financiera">
+  <title>Calculadora de Interés Compuesto</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Light Mode Variables */
+      --primary-color: #2563eb;
+      --primary-color-hover: #1d4ed8;
+      --background-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --border-color: #d1d5db;
+      --input-bg: #ffffff;
+      --text-color-primary: #111827;
+      --text-color-secondary: #6b7280;
+      --table-stripe-color: #f9fafb;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --border-radius: 8px;
+    }
+
+    body.dark-mode {
+      /* Dark Mode Variables */
+      --primary-color: #3b82f6;
+      --primary-color-hover: #60a5fa;
+      --background-color: #111827;
+      --card-bg: #1f2937;
+      --border-color: #374151;
+      --input-bg: #374151;
+      --text-color-primary: #f9fafb;
+      --text-color-secondary: #9ca3af;
+      --table-stripe-color: #374151;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color-primary);
+      line-height: 1.6;
+      padding: 2rem;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* --- Theme Switcher --- */
+    .theme-switcher-container {
+      position: absolute;
+      top: 1.5rem;
+      right: 2rem;
+    }
+
+    .theme-switcher {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+    }
+
+    .theme-switcher input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 28px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+    
+    /* --- Main Layout --- */
+    .calculator-container {
+      display: grid;
+      grid-template-columns: 450px 1fr;
+      gap: 2rem;
+      max-width: 1400px;
+      margin: 2rem auto 0;
+    }
+    
+    .results-column {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+
+    .breakdown-card {
+        max-width: 1400px;
+        margin: 2rem auto 0;
+    }
+    
+    #calculator-form {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem 1.5rem;
+    }
+
+    .input-panel h2 { margin-bottom: 1.5rem; font-weight: 600; color: var(--text-color-primary); }
+    .results-column h2, .breakdown-card h3, .results-column h3 { margin-bottom: 1.5rem; font-weight: 600; color: var(--text-color-primary); }
+    .form-group { margin-bottom: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+    .form-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-color-secondary); }
+    .input-group { display: flex; }
+
+    .input-group-prepend {
+      padding: 0.5rem 0.75rem;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-right: none;
+      border-radius: var(--border-radius) 0 0 var(--border-radius);
+      display: flex;
+      align-items: center;
+      color: var(--text-color-secondary);
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.5rem;
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--text-color-primary);
+      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .input-group .form-control { border-radius: 0 var(--border-radius) var(--border-radius) 0; }
+    .form-control:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 20%, transparent); }
+    
+    .calculate-button, .action-button {
+      border-radius: var(--border-radius);
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s, transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      grid-column: 1 / -1;
+      margin-top: 1rem;
+    }
+    
+    .form-actions > .calculate-button {
+      flex: 2;
+    }
+    
+    .form-actions > .action-button {
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 1rem;
+    }
+
+    .calculate-button {
+      padding: 0.75rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      font-size: 1rem;
+    }
+
+    .calculate-button:hover:not(:disabled) {
+      background-color: var(--primary-color-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+    .calculate-button:disabled { background-color: #e5e7eb; color: var(--text-color-secondary); cursor: wait; }
+    
+    .results-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+
+    .summary-item {
+      background-color: color-mix(in srgb, var(--background-color) 50%, var(--card-bg));
+      padding: 1.5rem 1rem;
+      border-radius: var(--border-radius);
+      text-align: center;
+      transition: transform 0.2s ease-in-out;
+    }
+    .summary-item:hover { transform: scale(1.02); }
+    .summary-icon { margin-bottom: 0.75rem; color: var(--primary-color); }
+    .summary-icon svg { width: 28px; height: 28px; }
+    .summary-item p { margin: 0 0 0.25rem 0; font-size: 0.9rem; color: var(--text-color-secondary); }
+    .summary-item .value { font-size: 1.75rem; font-weight: 600; color: var(--text-color-primary); }
+    
+    #chart-container { margin-bottom: 1.5rem; }
+    .actions-container { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .action-button {
+        flex-grow: 1;
+        padding: 0.6rem 1rem;
+        background-color: transparent;
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+        font-size: 0.9rem;
+    }
+    .action-button:hover:not(:disabled) { background-color: var(--primary-color); color: white; transform: translateY(-1px); box-shadow: var(--shadow); }
+    .action-button:disabled { border-color: var(--border-color); color: #9ca3af; cursor: not-allowed; }
+    
+    .table-container { overflow-x: auto; }
+    .results-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .results-table th, .results-table td { padding: 0.75rem; text-align: right; border-bottom: 1px solid var(--border-color); }
+    .results-table th { font-weight: 600; color: var(--text-color-secondary); }
+    .results-table tbody tr:nth-child(even) { background-color: var(--table-stripe-color); }
+    .results-table tbody tr:last-child td { border-bottom: none; }
+    .results-table td:first-child, .results-table th:first-child { text-align: center; font-weight: 500; }
+
+    /* --- Chart Toggle --- */
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .chart-header h3 {
+      margin-bottom: 0;
+    }
+    .chart-toggle {
+      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+    }
+    .chart-toggle-btn {
+      padding: 0.3rem 0.8rem;
+      border: none;
+      background-color: transparent;
+      color: var(--text-color-secondary);
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+      font-size: 0.9rem;
+    }
+    .chart-toggle-btn:not(:last-child) {
+      border-right: 1px solid var(--border-color);
+    }
+    .chart-toggle-btn.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    .chart-toggle-btn:not(.active):hover {
+      background-color: var(--background-color);
+    }
+    
+    /* --- Responsive Design --- */
+    @media (max-width: 1024px) {
+        .calculator-container { grid-template-columns: 1fr; }
+    }
+    
+    @media (max-width: 768px) {
+        body { padding: 1rem; }
+        .theme-switcher-container { top: 1rem; right: 1rem; }
+        .calculator-container { margin-top: 3rem; }
+    }
+    
+    @media (max-width: 600px) {
+       .results-summary { grid-template-columns: 1fr; }
+       #calculator-form { grid-template-columns: 1fr; }
+    }
+  </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+  <div class="theme-switcher-container">
+    <label for="theme-toggle" class="theme-switcher" title="Alternar modo oscuro">
+      <input type="checkbox" id="theme-toggle" aria-label="Alternar modo oscuro">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <main class="calculator-container">
+    <section class="input-panel card">
+      <h2>Calculadora de Interés Compuesto</h2>
+      <form id="calculator-form">
+        <div class="form-group">
+          <label for="initial-capital">Capital Inicial</label>
+           <div class="input-group">
+            <span class="input-group-prepend" id="currency-symbol-initial">€</span>
+            <input type="number" id="initial-capital" class="form-control" min="0" placeholder="p. ej., 1000">
+          </div>
+        </div>
+         <div class="form-group">
+          <label for="currency">Moneda</label>
+          <select id="currency" class="form-control">
+            <option value="USD" data-symbol="$" selected>USD ($)</option>
+            <option value="EUR" data-symbol="€">EUR (€)</option>
+            <option value="GBP" data-symbol="£">GBP (£)</option>
+            <option value="INR" data-symbol="₹">INR (₹)</option>
+            <option value="JPY" data-symbol="¥">JPY (¥)</option>
+            <option value="AUD" data-symbol="A$">AUD (A$)</option>
+            <option value="CAD" data-symbol="C$">CAD (C$)</option>
+            <option value="CHF" data-symbol="CHF">CHF (CHF)</option>
+            <option value="NZD" data-symbol="NZ$">NZD (NZ$)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="regular-contribution">Aportación Periódica</label>
+           <div class="input-group">
+            <span class="input-group-prepend" id="currency-symbol-contribution">€</span>
+            <input type="number" id="regular-contribution" class="form-control" min="0" placeholder="p. ej., 100">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="contribution-frequency">Frecuencia de Aportación</label>
+          <select id="contribution-frequency" class="form-control">
+            <option value="365">Diaria</option>
+            <option value="52">Semanal</option>
+            <option value="12" selected>Mensual</option>
+            <option value="1">Anual</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="interest-rate">Tasa de Interés Anual (%)</label>
+          <input type="number" id="interest-rate" class="form-control" step="0.1" min="0" placeholder="p. ej., 7">
+        </div>
+        <div class="form-group">
+          <label for="capitalization-frequency">Frecuencia de Capitalización</label>
+          <select id="capitalization-frequency" class="form-control">
+            <option value="365" selected>Diaria</option>
+            <option value="12">Mensual</option>
+            <option value="4">Trimestral</option>
+            <option value="1">Anual</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="term">Plazo (Años)</label>
+          <input type="number" id="term" class="form-control" min="1" placeholder="p. ej., 10">
+        </div>
+        <div class="form-group">
+          <label for="risk-tolerance">Tolerancia al Riesgo</label>
+          <select id="risk-tolerance" class="form-control">
+            <option value="conservative">Conservador</option>
+            <option value="moderate" selected>Moderado</option>
+            <option value="aggressive">Agresivo</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="calculate-button" class="calculate-button">Calcular</button>
+          <button type="button" id="start-over-button" class="action-button">Empezar de Nuevo</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="results-column">
+        <div class="card">
+            <h2>Resumen de Resultados</h2>
+            <div class="results-summary">
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="presentation" focusable="false"><path d="M12 2L2 7V9H3V18H21V9H22V7L12 2ZM6 16V9H8V16H6ZM11 16V9H13V16H11ZM16 16V9H18V16H16ZM5 7.37L12 4.07L19 7.37V8H5V7.37Z"/></svg>
+                    </div>
+                    <p>Capital Final</p>
+                    <div class="value" id="final-capital" aria-live="polite" role="status">€0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon">
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="presentation" focusable="false"><path d="M19 14v5H5v-5H3v7h18v-7h-2zm-8.41-3.59L12 12l1.41-1.41L15.59 13l1.41-1.41L12 6.59 7 11.59l1.41 1.41L10.59 10.41z"/></svg>
+                    </div>
+                    <p>Total Invertido</p>
+                    <div class="value" id="total-invested" aria-live="polite" role="status">€0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="presentation" focusable="false"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/></svg>
+                    </div>
+                    <p>Intereses Generados</p>
+                    <div class="value" id="interest-generated" aria-live="polite" role="status">€0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="presentation" focusable="false"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-7h7.5c0 3.86-3.14 7-7 7l-.5-.01zM13 4.07c3.15.56 5.66 2.8 6.37 5.93H13V4.07z"/></svg>
+                    </div>
+                    <p>Rendimiento (%)</p>
+                    <div class="value" id="performance" aria-live="polite" role="status">0%</div>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="margin-top: 2rem;">
+            <div class="chart-header">
+                <h3>Crecimiento de la Inversión</h3>
+                <div class="chart-toggle">
+                    <button type="button" id="bar-chart-btn" class="chart-toggle-btn active">Barras</button>
+                    <button type="button" id="line-chart-btn" class="chart-toggle-btn">Línea</button>
+                </div>
+            </div>
+            <div id="chart-container">
+                <canvas id="growth-chart"></canvas>
+            </div>
+            <div class="actions-container">
+                <button type="button" id="share-button" class="action-button">Compartir Cálculo</button>
+                <button type="button" id="download-csv-button" class="action-button">Descargar CSV</button>
+                <button type="button" id="download-pdf-button" class="action-button">Descargar PDF</button>
+            </div>
+        </div>
+    </section>
+  </main>
+
+  <section class="card breakdown-card">
+      <h3>Tabla de Desglose</h3>
+      <div class="table-container">
+          <table class="results-table">
+              <thead>
+                  <tr>
+                      <th>Año</th>
+                      <th>Saldo Inicial</th>
+                      <th>Aportación</th>
+                      <th>Intereses Ganados</th>
+                      <th>Saldo Final</th>
+                  </tr>
+              </thead>
+              <tbody id="breakdown-table-body">
+              </tbody>
+          </table>
+      </div>
+  </section>
+
+  <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
