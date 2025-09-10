@@ -487,3 +487,18 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCurrencySymbols();
     calculateAndDisplay();
 });
+
+
+// New Snippet
+import React, { useEffect } from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+
+function HeightMessenger() {
+  useEffect(() => {
+    const sendHeight = () => {
+      window.parent.postMessage(
+        { type: "resize", height: document.body.scrollHeight },
+        "*"
+      );
+    };
