@@ -467,9 +467,13 @@
   <script>
   function sendHeight() {
     window.parent.postMessage(
-      { type: "resize", height: document.body.scrollHeight },
+      { type: "compound-calculator-height", height: document.body.scrollHeight },
       "*"
     );
   }
+  window.onload = sendHeight;
+  window.onresize = sendHeight;
+</script>
+
 </body>
 </html>
